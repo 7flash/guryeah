@@ -130,7 +130,6 @@ Try to prioritize direct quotes, stitching them together with triple dots, ensur
 
     from = Number.parseInt(from.toString().replace(/\s+/g, ''));
     to = Number.parseInt(to.toString().replace(/\s+/g, ''));
-    const sanitized_section = `${from}-${to}`.replace(/\s+/g, '');
 
     const paragraphPromptBase = 'transform given transcript into easy to read paragraphs formatted with markdown spoken coherently from the mouth of person in his first view, write from position of author only adding transition comments between sentences using cursive font wrapped with asteriks symbol';
 
@@ -140,7 +139,11 @@ Try to prioritize direct quotes, stitching them together with triple dots, ensur
     if (to >= num_chapters) {
       single_highlight = true;
       to = num_chapters;
+    } else if (to + section_size - overlap > num_chapters) {
+      to = num_chapters;
     }
+
+    const sanitized_section = `${from}-${to}`.replace(/\s+/g, '');
 
     if (first_iteration && single_highlight) {
       paragraphPrompt = `|user|
@@ -150,16 +153,12 @@ transcript of a new paragraph:
 file:${DATA_FOLDER}/${id}-chapters-${from}-${to}-highlight-response.txt
 `
     } else if (first_iteration && !single_highlight) {
-      const next_highlight_to = to + section_size - overlap;
       paragraphPrompt = `|user|
 ${paragraphPromptBase}
 |user|
-previous paragraph:
-file:${previous_paragraph_response_file}
-|user|
 transcript of a new paragraph:
-file:${DATA_FOLDER}/${id}-chapters-${from}-${to}-highlight-response.txt
-file:${DATA_FOLDER}/${id}-chapters-${to}-${next_highlight_to}-highlight-response.txt`
+file:${DATA_FOLDER}/${id}-chapters-${from}-${to-section_size+overlap}-highlight-response.txt
+file:${DATA_FOLDER}/${id}-chapters-${to-section_size+overlap}-${to}-highlight-response.txt`
     } else if (!first_iteration && single_highlight) {
       paragraphPrompt = `|user|
 ${paragraphPromptBase}, ensure its fits naturally as continuation of previous paragraph without repetition
@@ -171,7 +170,6 @@ transcript of a new paragraph:
 file:${DATA_FOLDER}/${id}-chapters-${from}-${to}-highlight-response.txt
 `
     } else {
-      const next_highlight_to = to + section_size - overlap;
       paragraphPrompt = `|user|
 ${paragraphPromptBase}
 |user|
@@ -179,8 +177,8 @@ previous paragraph:
 file:${previous_paragraph_response_file}
 |user|
 transcript of a new paragraph:
-file:${DATA_FOLDER}/${id}-chapters-${from}-${to}-highlight-response.txt
-file:${DATA_FOLDER}/${id}-chapters-${to}-${next_highlight_to}-highlight-response.txt`
+file:${DATA_FOLDER}/${id}-chapters-${from}-${from+section_size-overlap}-highlight-response.txt
+file:${DATA_FOLDER}/${id}-chapters-${from+section_size-overlap}-${to}-highlight-response.txt`
     }
 
     const paragraph_prompt_file = `${DATA_FOLDER}/${id}-chapters-${sanitized_section}-paragraph-in.txt`;
@@ -232,6 +230,10 @@ file:${previous_insight_response_file}`;
       await $`rm -f ${temp_file}`;
     } else {
       // console.log(`Warning: Missing paragraph or insight file for section ${sanitized_section}`);
+    }
+
+    if (to >= num_chapters) {
+      break;
     }
 
     previous_insight_response_file = insight_response_file;

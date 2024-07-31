@@ -54,7 +54,7 @@ def create_markdown_file(file_path):
 
     # Define the frontmatter fields
     frontmatter = {
-        "title": title.replace(':', '\\:'),
+        "title": title.replace(':', '\\:').replace('"', '\\"'),
         "slug": slug,
         "tags": ["podcast", "video", "youtube"],
         "cover": "",
